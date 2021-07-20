@@ -18,7 +18,7 @@ use async_tungstenite::tungstenite::protocol::Message;
 type Tx = UnboundedSender<Message>;
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
-use from_anarchy_lib::commands::Command::{self, *};
+use from_anarchy_lib::commands::*;
 
 async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
     println!("Incoming TCP connection from: {}", addr);
@@ -36,12 +36,17 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
 
     let broadcast_incoming = incoming
         .try_for_each(|msg| {
-            // let peers = peer_map.lock().unwrap();
+            let respond = |message: Message| {
+                peer_map.lock().unwrap().get(&addr).unwrap().unbounded_send(message).unwrap();
+            };
             if msg.is_close() {
                 println!("Player left");
-            } else if let Ok(command) = Command::from_json_bin(&msg.into_data()[..]) {
+            } else if let Ok(command) = ServerCommand::from_json_bin(&msg.into_data()[..]) {
                 match command {
-                    RegisterPlayer => { println!("Registering player..."); peer_map.lock().unwrap().get(&addr).unwrap().unbounded_send(Message::binary(Command::RegisterPlayer.to_json_bin())).unwrap(); } // Expected to fail client-side
+                    ServerCommand::RegisterPlayer => {
+                        println!("Registering player...");
+                        respond(Message::binary(ServerCommand::RegisterPlayer.to_json_bin()));
+                    }
                 }
             } else {
                 eprintln!("Failed to parse command!");

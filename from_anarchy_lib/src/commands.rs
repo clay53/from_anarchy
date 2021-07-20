@@ -1,16 +1,22 @@
 use serde::{Serialize, Deserialize};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Command {
-    RegisterPlayer
-}
-
-impl Command {
-    pub fn to_json_bin(&self) -> Vec<u8> {
+pub trait Command<'a>: Serialize + Deserialize<'a> + std::fmt::Debug {
+    fn to_json_bin(&self) -> Vec<u8> {
         serde_json::to_vec(self).unwrap()
     }
 
-    pub fn from_json_bin(bin: &[u8]) -> serde_json::Result<Command> {
+    fn from_json_bin(bin: &'a [u8]) -> serde_json::Result<Self> {
         serde_json::from_slice(bin)
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerCommand {
+    RegisterPlayer
+}
+impl Command<'_> for ServerCommand {}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ClientCommand {
+    RegisterPlayer
+}
+impl Command<'_> for ClientCommand {}
