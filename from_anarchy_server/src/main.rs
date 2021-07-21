@@ -36,8 +36,11 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
 
     let broadcast_incoming = incoming
         .try_for_each(|msg| {
-            let respond = |message: Message| {
-                peer_map.lock().unwrap().get(&addr).unwrap().unbounded_send(message).unwrap();
+            let respond = |command: ClientCommand| {
+                let message = Message::binary(command.to_json_bin());
+                let peers = peer_map.lock().unwrap();
+                let reciever = peers.get(&addr).unwrap();
+                reciever.unbounded_send(message).unwrap();
             };
             if msg.is_close() {
                 println!("Player left");
@@ -45,7 +48,9 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
                 match command {
                     ServerCommand::RegisterPlayer => {
                         println!("Registering player...");
-                        respond(Message::binary(ServerCommand::RegisterPlayer.to_json_bin()));
+                        respond(ClientCommand::FirstSync(FirstSyncData {
+                            
+                        }));
                     }
                 }
             } else {

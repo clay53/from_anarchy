@@ -6,10 +6,12 @@ pub mod commands;
 
 use serde::{Serialize, Deserialize};
 
+use std::collections::HashMap;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Tile {
     Air,
-    Dirt
+    Dirt,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,10 +19,41 @@ pub enum Entity {
 
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EntityMap {
+    entity_map: HashMap<u64, Entity>,
+    id_counter: u64,
+}
+
+impl EntityMap {
+    pub fn new() -> EntityMap {
+        EntityMap {
+            entity_map: HashMap::new(),
+            id_counter: 0
+        }
+    }
+
+    pub fn inner(&mut self) -> &mut HashMap<u64, Entity> {
+        &mut self.entity_map
+    }
+
+    pub fn push(&mut self, entity: Entity) {
+        let id = self.next_id();
+        self.entity_map.insert(id, entity);
+    }
+
+    // Ids will eventually run out in a save. This will have to be adapted later to allow for inputting into freed positions
+    fn next_id(&mut self) -> u64 {
+        let id = self.id_counter;
+        self.id_counter += 1;
+        return id
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Game {
     map: Vec<Vec<Vec<Tile>>>,
-    entities: Vec<Entity>
+    entities: EntityMap
 }
 
 impl Game {
@@ -41,7 +74,7 @@ impl Game {
 
         Game {
             map: map,
-            entities: Vec::new()
+            entities: EntityMap::new()
         }
     }
 }

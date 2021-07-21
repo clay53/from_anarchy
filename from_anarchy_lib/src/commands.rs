@@ -17,6 +17,11 @@ impl Command<'_> for ServerCommand {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientCommand {
-    RegisterPlayer
+    FirstSync(FirstSyncData)
 }
 impl Command<'_> for ClientCommand {}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FirstSyncData {
+    // pub player_entity_id: u64
+}
