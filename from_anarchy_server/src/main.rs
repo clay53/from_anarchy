@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::HashMap,
     io::Error as IoError,
     net::SocketAddr,
@@ -15,12 +16,11 @@ use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
 use async_tungstenite::tungstenite::protocol::Message;
 
-type Tx = UnboundedSender<Message>;
-type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
-
+use from_anarchy_server::*;
+use from_anarchy_lib::*;
 use from_anarchy_lib::commands::*;
 
-async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
+async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr, game_arc: GameArc) {
     println!("Incoming TCP connection from: {}", addr);
 
     let ws_stream = async_tungstenite::accept_async(raw_stream)
@@ -30,26 +30,32 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
 
     // Insert the write part of this peer to the peer map.
     let (tx, rx) = unbounded();
-    peer_map.lock().unwrap().insert(addr, tx);
+    peer_map.lock().unwrap().insert(addr, PeerData::new(tx));
 
     let (outgoing, incoming) = ws_stream.split();
 
     let broadcast_incoming = incoming
         .try_for_each(|msg| {
             let respond = |command: ClientCommand| {
-                let message = Message::binary(command.to_json_bin());
+                let bin_command = command.to_bin();
+                eprintln!("Sending a response that's {}MB", bin_command.len() as f64/1048576.0);
+                let message = Message::binary(bin_command);
                 let peers = peer_map.lock().unwrap();
-                let reciever = peers.get(&addr).unwrap();
+                let reciever = &peers.get(&addr).unwrap().tx;
                 reciever.unbounded_send(message).unwrap();
             };
             if msg.is_close() {
-                println!("Player left");
-            } else if let Ok(command) = ServerCommand::from_json_bin(&msg.into_data()[..]) {
+                println!("Socket Disconnected");
+            } else if let Ok(command) = ServerCommand::from_bin(&msg.into_data()[..]) {
                 match command {
                     ServerCommand::RegisterPlayer => {
                         println!("Registering player...");
+                        let mut game = game_arc.lock().unwrap();
+                        let id = game.new_player("Player".to_string());
                         respond(ClientCommand::FirstSync(FirstSyncData {
-                            
+                            player_entity_id: id,
+                            map: Cow::Borrowed(&game.get_map()),
+                            entities: Cow::Borrowed(&game.get_entities()),
                         }));
                     }
                 }
@@ -72,20 +78,32 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
     peer_map.lock().unwrap().remove(&addr);
 }
 
+async fn server_tick(_game_arc: GameArc) {
+    
+}
+
+async fn accept_connections(listener: TcpListener, peer_map: PeerMap, game_arc: GameArc) {
+    println!("Accepting connections...");
+    while let Ok((stream, addr)) = listener.accept().await {
+        task::spawn(handle_connection(peer_map.clone(), stream, addr, game_arc.clone()));
+    }
+}
+
 async fn run() -> Result<(), IoError> {
     let addr = "127.0.0.1:8080";
 
-    let state = PeerMap::new(Mutex::new(HashMap::new()));
+    let peer_map = PeerMap::new(Mutex::new(HashMap::new()));
 
     // Create the event loop and TCP listener we'll accept connections on.
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
     println!("Listening on: {}", addr);
 
-    // Let's spawn the handling of each connection in a separate task.
-    while let Ok((stream, addr)) = listener.accept().await {
-        task::spawn(handle_connection(state.clone(), stream, addr));
-    }
+    let game_arc = GameArc::new(Mutex::new(Game::new()));
+
+    let tick = server_tick(game_arc.clone());
+    let wsfut = accept_connections(listener, peer_map, game_arc);
+    futures::join!(tick, wsfut);
 
     Ok(())
 }

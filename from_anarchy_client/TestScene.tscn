@@ -7,5 +7,5 @@
 script = ExtResource( 1 )
 server_path = NodePath("server")
 
-[node name="server" type="Node" parent="."]
+[node name="server" type="Spatial" parent="."]
 script = ExtResource( 2 )

@@ -8,21 +8,44 @@ use serde::{Serialize, Deserialize};
 
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Tile {
     Air,
     Dirt,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Entity {
+pub type TileMap = Vec<Vec<Vec<Tile>>>;
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum Entity {
+    Player(Player)
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct PosRot {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EntityTransform {
+    pub position: PosRot,
+    pub rotation: PosRot
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct Player {
+    pub name: String,
+    pub transform: EntityTransform
+}
+
+pub type EntityId = u64;
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct EntityMap {
     entity_map: HashMap<u64, Entity>,
-    id_counter: u64,
+    id_counter: EntityId,
 }
 
 impl EntityMap {
@@ -33,36 +56,37 @@ impl EntityMap {
         }
     }
 
-    pub fn inner(&mut self) -> &mut HashMap<u64, Entity> {
+    pub fn inner(&mut self) -> &mut HashMap<EntityId, Entity> {
         &mut self.entity_map
     }
 
-    pub fn push(&mut self, entity: Entity) {
+    pub fn push(&mut self, entity: Entity) -> EntityId {
         let id = self.next_id();
         self.entity_map.insert(id, entity);
+        id
     }
 
     // Ids will eventually run out in a save. This will have to be adapted later to allow for inputting into freed positions
-    fn next_id(&mut self) -> u64 {
+    fn next_id(&mut self) -> EntityId {
         let id = self.id_counter;
         self.id_counter += 1;
         return id
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
-    map: Vec<Vec<Vec<Tile>>>,
+    map: TileMap,
     entities: EntityMap
 }
 
 impl Game {
     pub fn new() -> Game {
-        let mut map = Vec::with_capacity(256);
-        for _x in 0..256 {
-            let mut yzslice = Vec::with_capacity(256);
-            for _y in 0..256 {
-                let mut zslice = Vec::with_capacity(256);
+        let mut map = TileMap::with_capacity(64);
+        for _x in 0..64 {
+            let mut yzslice = Vec::with_capacity(64);
+            for _y in 0..64 {
+                let mut zslice = Vec::with_capacity(64);
                 for z in 0..256 {
                     let tile = if z <= 128 { Tile::Air } else { Tile::Dirt };
                     zslice.push(tile);
@@ -76,6 +100,32 @@ impl Game {
             map: map,
             entities: EntityMap::new()
         }
+    }
+
+    pub fn get_map(&self) -> &TileMap {
+        &self.map
+    }
+
+    pub fn get_entities(&self) -> &EntityMap {
+        &self.entities
+    }
+
+    pub fn new_player(&mut self, name: String) -> EntityId {
+        self.entities.push(Entity::Player(Player {
+            name: name,
+            transform: EntityTransform {
+                position: PosRot {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 129.0
+                },
+                rotation: PosRot {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0
+                }
+            }
+        }))
     }
 }
 

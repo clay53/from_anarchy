@@ -1,11 +1,14 @@
+use crate::*;
+use std::borrow::Cow;
 use serde::{Serialize, Deserialize};
+
 pub trait Command<'a>: Serialize + Deserialize<'a> + std::fmt::Debug {
-    fn to_json_bin(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+    fn to_bin(&self) -> Vec<u8> {
+        bincode::serialize(self).unwrap()
     }
 
-    fn from_json_bin(bin: &'a [u8]) -> serde_json::Result<Self> {
-        serde_json::from_slice(bin)
+    fn from_bin(bin: &'a [u8]) -> bincode::Result<Self> {
+        bincode::deserialize(bin)
     }
 }
 
@@ -16,12 +19,14 @@ pub enum ServerCommand {
 impl Command<'_> for ServerCommand {}
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ClientCommand {
-    FirstSync(FirstSyncData)
+pub enum ClientCommand<'a> {
+    FirstSync(FirstSyncData<'a>)
 }
-impl Command<'_> for ClientCommand {}
+impl Command<'_> for ClientCommand<'_> {}
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct FirstSyncData {
-    // pub player_entity_id: u64
+pub struct FirstSyncData<'a> {
+    pub player_entity_id: EntityId,
+    pub map: Cow<'a, TileMap>,
+    pub entities: Cow<'a, EntityMap>,
 }

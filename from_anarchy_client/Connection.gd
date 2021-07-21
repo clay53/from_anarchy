@@ -11,7 +11,8 @@ func _ready():
 	_client.connect("connection_error", self, "_closed")
 	_client.connect("connection_established", self, "_connected")
 	_client.connect("data_received", self, "_on_data")
-
+	
+	print("Attempting to connect...")
 	var err = _client.connect_to_url(websocket_url)
 	if err != OK:
 		print("Unable to connect")
@@ -26,7 +27,9 @@ func _connected(proto = ""):
 	_client.get_peer(1).put_packet(server.register_player())
 
 func _on_data():
-	var packet = _client.get_peer(1).get_packet();
+	var peer = _client.get_peer(1);
+	print(peer.get_available_packet_count())
+	var packet = peer.get_packet();
 	server.parse_command(Array(packet))
 
 func _process(delta):
