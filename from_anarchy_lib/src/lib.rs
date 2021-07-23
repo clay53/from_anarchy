@@ -5,8 +5,8 @@ pub mod godot;
 pub mod commands;
 
 use serde::{Serialize, Deserialize};
-
 use std::collections::HashMap;
+use euclid::{Vector3D, UnknownUnit};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Tile {
@@ -15,6 +15,8 @@ pub enum Tile {
 }
 
 pub type TileMap = Vec<Vec<Vec<Tile>>>;
+
+pub type TilePos = Vector3D<usize, UnknownUnit>;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Entity {
@@ -26,6 +28,20 @@ pub struct PosRot {
     pub x: f32,
     pub y: f32,
     pub z: f32
+}
+
+impl PosRot {
+    pub fn new(x: f32, y: f32, z: f32) -> PosRot {
+        PosRot {
+            x: x,
+            y: y,
+            z: z
+        }
+    }
+
+    pub fn as_vector3d(&self) -> Vector3D<f32, UnknownUnit> {
+        Vector3D::new(self.x, self.y, self.z)
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -56,7 +72,11 @@ impl EntityMap {
         }
     }
 
-    pub fn inner(&mut self) -> &mut HashMap<EntityId, Entity> {
+    pub fn inner(&self) -> &HashMap<EntityId, Entity> {
+        &self.entity_map
+    }
+
+    pub fn inner_mut(&mut self) -> &mut HashMap<EntityId, Entity> {
         &mut self.entity_map
     }
 
@@ -82,13 +102,13 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Game {
-        let mut map = TileMap::with_capacity(64);
-        for _x in 0..64 {
-            let mut yzslice = Vec::with_capacity(64);
-            for _y in 0..64 {
-                let mut zslice = Vec::with_capacity(64);
-                for z in 0..256 {
-                    let tile = if z <= 128 { Tile::Air } else { Tile::Dirt };
+        let mut map = TileMap::with_capacity(32);
+        for _x in 0..32 {
+            let mut yzslice = Vec::with_capacity(32);
+            for y in 0..32 {
+                let mut zslice = Vec::with_capacity(32);
+                for _z in 0..32 {
+                    let tile = if y <= 29 { Tile::Dirt } else { Tile::Air };
                     zslice.push(tile);
                 }
                 yzslice.push(zslice);
@@ -115,9 +135,9 @@ impl Game {
             name: name,
             transform: EntityTransform {
                 position: PosRot {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 129.0
+                    x: 15.0,
+                    y: 30.0,
+                    z: 15.0
                 },
                 rotation: PosRot {
                     x: 0.0,

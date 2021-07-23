@@ -10,11 +10,12 @@ use async_tungstenite::tungstenite::protocol::Message;
 pub type Tx = UnboundedSender<Message>;
 pub type PeerMap = Arc<Mutex<HashMap<SocketAddr, PeerData>>>;
 
-pub type GameArc = Arc<Mutex<from_anarchy_lib::Game>>;
+use from_anarchy_lib::*;
+pub type GameArc = Arc<Mutex<Game>>;
 
 pub struct PeerData {
     pub tx: Tx,
-    pub player_entity_id: Option<u64>
+    pub player_entity_id: Option<EntityId>
 }
 
 impl PeerData {

@@ -1,0 +1,10 @@
+[gd_scene format=2]
+
+[node name="Entities" type="Spatial"]
+
+[node name="OwnPlayer" type="ARVROrigin" parent="."]
+world_scale = 0.1
+
+[node name="ARVRCamera" type="ARVRCamera" parent="OwnPlayer"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.646, 0 )
+current = true

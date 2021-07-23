@@ -36,12 +36,16 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
 
     let broadcast_incoming = incoming
         .try_for_each(|msg| {
-            let respond = |command: ClientCommand| {
+            let respond = |command: ClientCommand, peer_action: Option<Box<dyn Fn(&mut PeerData) -> ()>>| {
                 let bin_command = command.to_bin();
                 eprintln!("Sending a response that's {}MB", bin_command.len() as f64/1048576.0);
                 let message = Message::binary(bin_command);
-                let peers = peer_map.lock().unwrap();
-                let reciever = &peers.get(&addr).unwrap().tx;
+                let mut peers = peer_map.lock().unwrap();
+                let peer = peers.get_mut(&addr).unwrap();
+                if let Some(peer_action) = peer_action {
+                    peer_action(peer);
+                }
+                let reciever = &peer.tx;
                 reciever.unbounded_send(message).unwrap();
             };
             if msg.is_close() {
@@ -56,7 +60,9 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
                             player_entity_id: id,
                             map: Cow::Borrowed(&game.get_map()),
                             entities: Cow::Borrowed(&game.get_entities()),
-                        }));
+                        }), Some(Box::new(|peer: &mut PeerData| {
+                            peer.player_entity_id = Some(id);
+                        })));
                     }
                 }
             } else {

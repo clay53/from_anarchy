@@ -1,7 +1,13 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://Connection.gd" type="Script" id=1]
 [ext_resource path="res://Server.gdns" type="Script" id=2]
+
+[sub_resource type="ProceduralSky" id=1]
+
+[sub_resource type="Environment" id=2]
+background_mode = 2
+background_sky = SubResource( 1 )
 
 [node name="connection" type="Node"]
 script = ExtResource( 1 )
@@ -9,3 +15,6 @@ server_path = NodePath("server")
 
 [node name="server" type="Spatial" parent="."]
 script = ExtResource( 2 )
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource( 2 )

@@ -22,13 +22,12 @@ func _closed(was_clean = false):
 	print("Closed, clean: ", was_clean)
 	set_process(false)
 
-func _connected(proto = ""):
+func _connected(proto = "Not Set"):
 	print("Connected with protocol: ", proto)
 	_client.get_peer(1).put_packet(server.register_player())
 
 func _on_data():
 	var peer = _client.get_peer(1);
-	print(peer.get_available_packet_count())
 	var packet = peer.get_packet();
 	server.parse_command(Array(packet))
 
