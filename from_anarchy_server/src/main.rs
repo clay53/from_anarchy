@@ -4,6 +4,11 @@ use std::{
     io::Error as IoError,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    thread,
+    time::{
+        Duration,
+        Instant
+    },
 };
 
 use futures::prelude::*;
@@ -84,8 +89,19 @@ async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: Socke
     peer_map.lock().unwrap().remove(&addr);
 }
 
-async fn server_tick(_game_arc: GameArc) {
-    
+async fn server_tick(game_arc: GameArc) {
+    println!("Starting server ticking");
+    loop {
+        let start = Instant::now();
+        let game = game_arc.lock().unwrap();
+        let tick_time = Duration::from_micros(1000000/game.tps);
+
+        if let Some(remaining) = tick_time.checked_sub(start.elapsed()) {
+            std::thread::sleep(remaining);
+        } else {
+            eprintln!("Tick too slow!")
+        }
+    }
 }
 
 async fn accept_connections(listener: TcpListener, peer_map: PeerMap, game_arc: GameArc) {
@@ -93,6 +109,7 @@ async fn accept_connections(listener: TcpListener, peer_map: PeerMap, game_arc: 
     while let Ok((stream, addr)) = listener.accept().await {
         task::spawn(handle_connection(peer_map.clone(), stream, addr, game_arc.clone()));
     }
+    eprintln!("Done accepting connections.");
 }
 
 async fn run() -> Result<(), IoError> {
@@ -107,8 +124,8 @@ async fn run() -> Result<(), IoError> {
 
     let game_arc = GameArc::new(Mutex::new(Game::new()));
 
-    let tick = server_tick(game_arc.clone());
-    let wsfut = accept_connections(listener, peer_map, game_arc);
+    let tick = task::spawn(server_tick(game_arc.clone()));
+    let wsfut = task::spawn(accept_connections(listener, peer_map, game_arc));
     futures::join!(tick, wsfut);
 
     Ok(())

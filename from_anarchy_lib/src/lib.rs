@@ -97,7 +97,8 @@ impl EntityMap {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     map: TileMap,
-    entities: EntityMap
+    entities: EntityMap,
+    pub tps: u64
 }
 
 impl Game {
@@ -118,7 +119,8 @@ impl Game {
 
         Game {
             map: map,
-            entities: EntityMap::new()
+            entities: EntityMap::new(),
+            tps: 60
         }
     }
 

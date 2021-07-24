@@ -14,6 +14,14 @@ config/name="From Anarchy"
 run/main_scene="res://TestScene.tscn"
 config/icon="res://icon.png"
 
+[gdnative]
+
+singletons=[ "res://addons/godot-openvr/godot_openvr.gdnlib" ]
+
+[global]
+
+fps=false
+
 [network]
 
 limits/websocket_client/max_in_buffer_kb=20480

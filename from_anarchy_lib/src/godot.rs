@@ -1,7 +1,10 @@
 use crate::*;
 use crate::commands::*;
 use gdnative::prelude::*;
-use gdnative::api::ResourceLoader;
+use gdnative::api::{
+    node::DuplicateFlags,
+    ResourceLoader
+};
 use std::collections::HashMap;
 
 pub type GTileMap = HashMap<TilePos, Ref<Spatial, Shared>>;
@@ -25,12 +28,12 @@ impl Server {
             tiles: unsafe {
                 ResourceLoader::godot_singleton().load("res://Tiles.tscn", "PackedScene", false).unwrap()
                 .try_cast::<PackedScene>().unwrap()
-                .assume_safe().instance(0).unwrap()
+                .assume_safe().instance(PackedScene::GEN_EDIT_STATE_INSTANCE).unwrap()
             },
             entities: unsafe {
                 ResourceLoader::godot_singleton().load("res://Entities.tscn", "PackedScene", false).unwrap()
                 .try_cast::<PackedScene>().unwrap()
-                .assume_safe().instance(0).unwrap()
+                .assume_safe().instance(PackedScene::GEN_EDIT_STATE_INSTANCE).unwrap()
             },
             map: GTileMap::new(),
             entity_map: GEntityMap::new()
@@ -71,7 +74,7 @@ impl Server {
                             let dirt: TRef<Spatial, Shared> = unsafe {
                                 self.tiles.assume_safe()
                                 .get_child(0).unwrap()
-                                .assume_safe().duplicate(0).unwrap()
+                                .assume_safe().duplicate(DuplicateFlags::SCRIPTS.0).unwrap()
                                 .assume_safe().cast().unwrap()
                             };
                             let pos = TilePos::new(x, y, z);
@@ -88,16 +91,18 @@ impl Server {
         for (entityid, entity) in data.entities.inner() {
             if entityid == &data.player_entity_id {
                 godot_print!("{:?}", entity);
+                godot_print!("{:?}", DuplicateFlags::SCRIPTS);
                 let player: TRef<Spatial, Shared> = unsafe {
                     self.entities.assume_safe()
                     .get_child(0).unwrap()
-                    .assume_safe().duplicate(0).unwrap()
+                    .assume_safe().duplicate(DuplicateFlags::SCRIPTS.0).unwrap()
                     .assume_safe().cast().unwrap()
                 };
                 let Entity::Player(player_data) = entity;
                 player.set_translation(player_data.transform.position.as_vector3d());
                 self.entity_map.insert(*entityid, player.claim());
                 owner.add_child(player, false);
+                // player.request_ready();
             }
         }
     }
